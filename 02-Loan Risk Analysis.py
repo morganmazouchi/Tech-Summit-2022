@@ -355,7 +355,7 @@ gbt_valid_table.createOrReplaceTempView("gbt_valid_table")
 
 # COMMAND ----------
 
-app_name = 'morgan-loan-risk'
+app_name = 'mlflow-loan-risk'
 
 # COMMAND ----------
 
@@ -404,8 +404,8 @@ print(client.get_model_version_stages(app_name, 1))
 import time
 
 time.sleep(2) # Just to make sure it's had a second to register
-client.update_model_version(app_name, version=5, description="Loan risk prod version")
-client.transition_model_version_stage(app_name, version=5, stage="Production")
+client.update_model_version(app_name, version=1, description="Loan risk prod version")
+client.transition_model_version_stage(app_name, version=1, stage="Production")
 
 # COMMAND ----------
 
@@ -420,8 +420,8 @@ client.create_model_version(app_name, gbt_model_uri, gbt_model_info.run_id)
 # COMMAND ----------
 
 time.sleep(2)
-client.update_model_version(app_name, version=6, description="Loan risk next prod version")
-client.transition_model_version_stage(app_name, version=6, stage="Staging")
+client.update_model_version(app_name, version=2, description="Loan risk next prod version")
+client.transition_model_version_stage(app_name, version=2, stage="Staging")
 print(client.get_latest_versions(app_name, stages=['Staging'])[0])
 
 # COMMAND ----------
@@ -437,31 +437,16 @@ print(client.get_latest_versions(app_name, stages=['Staging'])[0])
 
 # COMMAND ----------
 
-# MAGIC %pip install "mlflow>=1.25.0"
-
-# COMMAND ----------
-
 import mlflow
 #                                                                                           output
 #                                                                 Model name                   |
 #                                                                     |                        |
-loan_risk_pred_udf = mlflow.pyfunc.spark_udf(spark, "models:/morgan-loan-risk/Production", "string")
+loan_risk_pred_udf = mlflow.pyfunc.spark_udf(spark, "models:/mlflow-loan-risk/Production", "string")
 spark.udf.register("loan_risk_prediction", loan_risk_pred_udf)
 
 # COMMAND ----------
 
-train
-
-# COMMAND ----------
-
 # MAGIC %sql
 # MAGIC 
-# MAGIC SELECT *, loan_risk_prediction(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc) as pred 
-# MAGIC FROM loan_stats
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC 
-# MAGIC SELECT *, loan_risk_prediction(loan_status,  revol_util, issue_d, earliest_cr_line, emp_length, verification_status, total_pymnt, loan_amnt, grade, annual_inc, dti, addr_state, term, home_ownership, purpose, application_type, delinq_2yrs, total_acc) as pred 
+# MAGIC SELECT *, loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
 # MAGIC FROM loan_stats

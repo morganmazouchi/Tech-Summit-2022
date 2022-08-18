@@ -153,11 +153,11 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- COMMAND ----------
 
 -- DBTITLE 1,Historical Loan Transactions
--- CREATE LIVE TABLE historical_txs
--- COMMENT "Historical loan transactions"
--- TBLPROPERTIES ("quality" = "silver")
--- AS SELECT a.* FROM LIVE.reference_loan_stats a
--- INNER JOIN LIVE.ref_accounting_treatment b USING (id)
+CREATE LIVE TABLE historical_txs
+COMMENT "Historical loan transactions"
+TBLPROPERTIES ("quality" = "silver")
+AS SELECT a.* FROM LIVE.reference_loan_stats a
+INNER JOIN LIVE.ref_accounting_treatment b USING (id)
 
 -- COMMAND ----------
 
@@ -239,27 +239,28 @@ GROUP BY country_code
 -- MAGIC   <img width="500px" src="https://github.com/QuentinAmbard/databricks-demo/raw/main/retail/resources/images/retail-ingestion-dlt-step5.png"/>
 -- MAGIC </div>
 -- MAGIC 
--- MAGIC Our Data scientist team has build a customer segmentation model and saved it into Databricks Model registry. 
+-- MAGIC Our Data scientist team has build a loan risk analysis model and saved it into Databricks Model registry. 
 -- MAGIC 
--- MAGIC We can easily load this model and enrich our data with our customer segment information. Note that we don't have to worry about the model framework (sklearn or other), MLFlow abstract that for us.
+-- MAGIC We can easily load this model and enrich our data with our loan analysis information. Note that we don't have to worry about the model framework (sklearn or other), MLFlow abstract that for us.
 
 -- COMMAND ----------
 
 -- DBTITLE 1,Load the Model as SQL Function
 -- MAGIC %python
 -- MAGIC import mlflow
--- MAGIC #                                                                                         Stage/version    output
--- MAGIC #                                                                 Model name                     |            |
--- MAGIC #                                                                     |                          |            |
--- MAGIC get_cluster_udf = mlflow.pyfunc.spark_udf(spark, "models:/field_demos_customer_segmentation/Production", "string")
--- MAGIC spark.udf.register("get_customer_segmentation_cluster", get_cluster_udf)
+-- MAGIC #                                                                                           output
+-- MAGIC #                                                                 Model name    stage          |
+-- MAGIC #                                                                     |          |             |
+-- MAGIC loan_risk_pred_udf = mlflow.pyfunc.spark_udf(spark, "models:/mlflow-loan-risk/Production", "string")
+-- MAGIC spark.udf.register("loan_risk_prediction", loan_risk_pred_udf)
 
 -- COMMAND ----------
 
 -- DBTITLE 1,Calling our ML model
-CREATE STREAMING LIVE TABLE user_segmentation_dlt
-COMMENT "Customer segmentation generated with our model from MLFlow registry"
-AS SELECT *, get_customer_segmentation_cluster(age, annual_income, spending_core) AS segment FROM STREAM(live.user_gold_dlt)
+CREATE STREAMING LIVE TABLE risk_prediction_dlt
+COMMENT "Risk prediction generated with our model from MLFlow registry"
+AS SELECT *, loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
+FROM STREAM(live.reference_loan_stats)
 
 -- COMMAND ----------
 
