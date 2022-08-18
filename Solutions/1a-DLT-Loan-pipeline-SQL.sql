@@ -245,7 +245,7 @@ GROUP BY country_code
 
 -- COMMAND ----------
 
--- DBTITLE 1,Load the Model as SQL Function
+-- DBTITLE 1,Load the Model as SQL Function in a Separate Notebook!
 -- MAGIC %python
 -- MAGIC import mlflow
 -- MAGIC #                                                                                           output
@@ -259,18 +259,69 @@ GROUP BY country_code
 -- DBTITLE 1,Calling our ML model
 CREATE STREAMING LIVE TABLE risk_prediction_dlt
 COMMENT "Risk prediction generated with our model from MLFlow registry"
-AS SELECT *, loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
+AS SELECT *, 
+loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
 FROM STREAM(live.reference_loan_stats)
 
 -- COMMAND ----------
 
 -- MAGIC %md 
 -- MAGIC 
--- MAGIC ## Our pipeline is now ready!
+-- MAGIC ## Now it is time to create a pipeline!
 -- MAGIC 
--- MAGIC Open the DLT menu, create a pipeline and select this notebook to run it. To generate sample data, please run the [companion notebook]($./00-Loan-Data-Generator) (make sure the path where you read and write the data are the same!)
+-- MAGIC ##### Note: You need to include the second python notebook in addition to this notebook in your pipeline!
 -- MAGIC 
--- MAGIC Datas Analyst can start using DBSQL to analyze data and track our Loan metrics.  Data Scientist can also access the data to start building models to predict payment default or other more advanced use-cases.
+-- MAGIC Navigate to the workflows in the menue, switch to delta live tables and click on create a pipeline! 
+-- MAGIC 
+-- MAGIC Here is a setting example including the python UDF and the SQL function notebooks. 
+-- MAGIC 
+-- MAGIC * Note: use unique value to set your target (recommended target: firstnamelastnameDB)
+-- MAGIC * Note the multiple entries (1 per notebook) in the "libraries" option, you need to add path to both notebooks
+-- MAGIC * Add data location paths as two parameters in your pipeline configuration:
+-- MAGIC 
+-- MAGIC       - key: loanStats , value: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+-- MAGIC       - key: input_data, value: /home/techsummit/dlt
+-- MAGIC       
+-- MAGIC Below is an example json file of a DLT pipeline's settings:
+-- MAGIC 
+-- MAGIC ```
+-- MAGIC {
+-- MAGIC     "id": "5edee273-d5bc-423b-aa30-1f003dc423a7",
+-- MAGIC     "clusters": [
+-- MAGIC         {
+-- MAGIC             "label": "default",
+-- MAGIC             "autoscale": {
+-- MAGIC                 "min_workers": 1,
+-- MAGIC                 "max_workers": 5
+-- MAGIC             }
+-- MAGIC         }
+-- MAGIC     ],
+-- MAGIC     "development": true,
+-- MAGIC     "continuous": false,
+-- MAGIC     "channel": "PREVIEW",
+-- MAGIC     "edition": "ADVANCED",
+-- MAGIC     "photon": false,
+-- MAGIC     "libraries": [
+-- MAGIC         {
+-- MAGIC             "notebook": {
+-- MAGIC                 "path": "/Repos/mojgan.mazouchi@databricks.com/Tech-Summit-2022/Solutions/1a-DLT-Loan-pipeline-SQL"
+-- MAGIC             }
+-- MAGIC         },
+-- MAGIC         {
+-- MAGIC             "notebook": {
+-- MAGIC                 "path": "/Repos/mojgan.mazouchi@databricks.com/Tech-Summit-2022/Solutions/1b-SQL-Delta-Live-Table-Python-UDF"
+-- MAGIC             }
+-- MAGIC         }
+-- MAGIC     ],
+-- MAGIC     "name": "Tech-summit-step2",
+-- MAGIC     "storage": "/tmp/logs",
+-- MAGIC     "configuration": {
+-- MAGIC         "loanStats": "/databricks-datasets/lending-club-loan-stats/LoanStats_*",
+-- MAGIC         "input_data": "/home/techsummit/dlt"
+-- MAGIC     },
+-- MAGIC     "target": "morganmazouchiDB"
+-- MAGIC }
+-- MAGIC ```
 
 -- COMMAND ----------
 
