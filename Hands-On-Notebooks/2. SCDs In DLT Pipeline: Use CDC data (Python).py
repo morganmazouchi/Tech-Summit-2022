@@ -171,20 +171,6 @@ from pyspark.sql.types import *
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC 
-# MAGIC ## Set up Configurations
-
-# COMMAND ----------
-
-"""
-Set up configuration 
-"""
-
-# source = spark.conf.get("source")
-
-# COMMAND ----------
-
 # DBTITLE 1,Let's explore our incoming data - Bronze Table - Autoloader & DLT
 """
 ##Create the bronze information table containing the raw JSON data taken from the storage path
