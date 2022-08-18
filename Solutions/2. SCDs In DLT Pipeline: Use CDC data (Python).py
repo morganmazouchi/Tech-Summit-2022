@@ -181,7 +181,7 @@ from pyspark.sql.types import *
 Set up configuration 
 """
 
-source = spark.conf.get("source")
+# source = spark.conf.get("source")
 
 # COMMAND ----------
 
@@ -191,17 +191,14 @@ source = spark.conf.get("source")
 """
 
 @dlt.table(name="customer_bronze",
-                  comment = "New customer data incrementally ingested from cloud object storage landing zone",
-  table_properties={
-    "quality": "bronze"
-  }
+                  comment = "New customer data incrementally ingested from cloud object storage landing zone"
 )
 def customer_bronze():
   return (
     (spark.readStream.format("cloudFiles")
       .option("cloudFiles.format", "json")
       .option("cloudFiles.inferColumnTypes", "true")
-      .load(f"{source}/customers")
+      .load(folder+"/customers")
     )
   )
 
@@ -239,17 +236,11 @@ def customer_bronze_clean_v():
 
 # DBTITLE 1,Delete unwanted clients records - Silver Table - DLT Python
 """
-##Create the target table 
+##Create the scd 1 target table 
 """
 
-dlt.create_target_table(name="customer_silver",
-  comment="Clean, merged customers",
-  table_properties={
-    "quality": "silver",
-    "pipelines.autoOptimize.managed"="true",
-    "pipelines.autoOptimize.zOrderCols"="email, address"
-  }
-)
+dlt.create_target_table(name="scd1_customer_silver",
+  comment="Clean, materialized up-to-date records of customers")
 
 # COMMAND ----------
 
@@ -258,17 +249,69 @@ dlt.create_target_table(name="customer_silver",
 """
 
 dlt.apply_changes(
-  target = "customer_silver", #The customer table being materilized
+  target = "scd1_customer_silver", #The customer table being materilized
   source = "customer_bronze_clean_v", #the incoming CDC
   keys = ["id"], #Primary key to match the rows to upsert/delete
   sequence_by = col("operation_date"), #deduplicate by operation date getting the most recent value
   apply_as_deletes = expr("operation = 'DELETE'"), #DELETE condition
- ## except_column_list = ["operation", "operation_date", "_rescued_data"], # drop metadata columns
+  except_column_list = ["operation", "operation_date", "_rescued_data"] # drop metadata columns
+)
+
+# COMMAND ----------
+
+# MAGIC %md-sandbox
+# MAGIC 
+# MAGIC ### Slowly Changing Dimention of type 2 (SCD2)
+# MAGIC 
+# MAGIC <img src="https://github.com/QuentinAmbard/databricks-demo/raw/main/product_demos/cdc_dlt/cdc_dlt_pipeline_4.png" width="700" style="float: right" />
+# MAGIC 
+# MAGIC #### Why SCD2
+# MAGIC 
+# MAGIC It's often required to create a table tracking all the changes resulting from APPEND, UPDATE and DELETE:
+# MAGIC 
+# MAGIC * History: you want to keep an history of all the changes from your table
+# MAGIC * Traceability: you want to see which operation
+# MAGIC 
+# MAGIC #### SCD2 with DLT
+# MAGIC 
+# MAGIC Delta support CDF (Change Data Flow) and `table_change` can be used to query the table modification in a SQL/python. However, CDF main use-case is to capture changes in a pipeline and not create a full view of the table changes from the begining. 
+# MAGIC 
+# MAGIC Things get especially complex to implement if you have out of order events. If you need to sequence your changes by a timestamp and receive a modification which happened in the past, then you not only need to append a new entry in your SCD table, but also update the previous entries.  
+# MAGIC 
+# MAGIC Delta Live Table makes all this logic super simple and let you create a separate table containing all the modifications, from the begining of the time. This table can then be used at scale, with specific partitions / zorder columns if required. Out of order fields will be handled out of the box based on the _sequence_by 
+# MAGIC 
+# MAGIC To create a SCD2 table, all we have to do is leverage the `APPLY CHANGES` with the extra option: `STORED AS {SCD TYPE 1 | SCD TYPE 2 [WITH {TIMESTAMP|VERSION}}]`
+# MAGIC 
+# MAGIC *Note: you can also limit the columns being tracked with the option: `TRACK HISTORY ON {columnList |* EXCEPT(exceptColumnList)}*
+
+# COMMAND ----------
+
+"""
+##Create the scd2 target table 
+"""
+
+dlt.create_target_table(name="scd2_customer_silver",
+  comment="Slowly Changing Dimension Type 2 for customers")
+
+# COMMAND ----------
+
+"""
+##APPLY CHANGES INTO the target table
+"""
+
+dlt.apply_changes(
+  target = "scd2_customer_silver", #The customer table being materilized
+  source = "customer_bronze_clean_v", #the incoming CDC
+  keys = ["id"], #Primary key to match the rows to upsert/delete
+  sequence_by = col("operation_date"), #deduplicate by operation date getting the most recent value
+  apply_as_deletes = expr("operation = 'DELETE'"), #DELETE condition
+  except_column_list = ["operation", "operation_date", "_rescued_data"], # drop metadata columns
   stored_as_scd_type = 2
 )
 
 # COMMAND ----------
 
-# MAGIC %md
+# MAGIC %md 
+# MAGIC #### How to run this pipeline
 # MAGIC 
-# MAGIC Next step, create DLT pipeline, add a path to this notebook and **add configuration with enabling applychanges to true**. For more detail see notebook "PipelineSettingConfiguration.json". 
+# MAGIC To create and run the DLT pipeline, add a path to this notebook and **add configuration with enabling applychanges to true**. For more detail see notebook "PipelineSettingConfiguration.json". 
