@@ -55,10 +55,11 @@
 
 -- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 1: raw_txs) with Parameterization
  -- TODO: Create a streaming table and name it raw_txt  --
+<FILL_IN>  
 COMMENT "New raw loan data incrementally ingested from cloud object storage landing zone"
 TBLPROPERTIES ("quality" = "bronze")
 AS SELECT * 
-FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")) -- TODO: add input_data to pipeline configuration setting using your own email: /home/firstname.lastname@databricks.com
+FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")) -- TODO: add input_data to pipeline configuration setting using /home/techsummit/dlt
 
 -- COMMAND ----------
 
@@ -140,7 +141,7 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- DBTITLE 1,Quarantine Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-  -- TO DO: Add constraint to "flag" records but not take an action on them, when next_payment_date is less or equal to date('2020-12-31') --
+  -- TODO: Add constraint to "flag" records but not take an action on them, when next_payment_date is less or equal to date('2020-12-31') --
   <FILL_IN> 
   CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0),
   CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) 
