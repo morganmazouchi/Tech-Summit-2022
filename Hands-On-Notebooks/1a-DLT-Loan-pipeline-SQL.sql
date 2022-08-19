@@ -53,13 +53,12 @@
 
 -- COMMAND ----------
 
--- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 1: raw_txs) with Parametrization
- -- TO DO: Create a streaming table and name it raw_txt  --
-<FILL_IN> 
+-- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 1: raw_txs) with Parameterization
+ -- TODO: Create a streaming table and name it raw_txt  --
 COMMENT "New raw loan data incrementally ingested from cloud object storage landing zone"
 TBLPROPERTIES ("quality" = "bronze")
 AS SELECT * 
-FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")) -- add input_data to pipeline configuration setting using your own email: /home/firstname.lastname@databricks.com
+FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")) -- TODO: add input_data to pipeline configuration setting using your own email: /home/firstname.lastname@databricks.com
 
 -- COMMAND ----------
 
@@ -72,7 +71,7 @@ TBLPROPERTIES --Can be spark, delta, or DLT confs
 "pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo",
 "pipelines.trigger.interval"="1 hour"
  )
-AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"))  -- dd loanStats to pipeline configuration setting using: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"))  -- TODO: set loanStats to pipeline configuration setting using: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 
 -- COMMAND ----------
 
@@ -90,10 +89,10 @@ AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnT
 -- COMMAND ----------
 
 -- DBTITLE 1,Read Raw Data Stored in Delta Tables in DLT (Table 2: ref_accounting_treatment) with Parametrization
--- TO DO: Create a live table and name it ref_accounting_treatment  --
+-- TODO: Create a table called ref_accounting_treatment that will be a batch load of the data located at "${input_data}/ref_accounting_treatment/", and name it ref_accounting_treatment
 <FILL_IN> 
 COMMENT "Lookup mapping for accounting codes"
-AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` 
+<FILL_IN> 
 
 -- COMMAND ----------
 
@@ -125,12 +124,11 @@ AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/`
 
 -- DBTITLE 1,Perform ETL & Enforce Quality Expectations
 CREATE STREAMING LIVE TABLE cleaned_new_txs (
-
-  -- TO DO: Add constraint to remove any records that next_payment_date is less or equal to date('2020-12-31') --
-<FILL_IN> 
-  CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
-  -- TO DO: Add constraint that failing the pipeline upon observing a null value in cost_center_code field --
-<FILL_IN> 
+  -- TODO: Add constraint to remove any records that next_payment_date is less or equal to date('2020-12-31') --
+  <FILL_IN>
+  CONSTRAINT `Balance should be positive` EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
+  -- TODO: Add constraint that fails the entire update upon observing a null value in cost_center_code field --
+  <FILL_IN>
 )
 COMMENT "Livestream of new transactions, cleaned and compliant"
 TBLPROPERTIES ("quality" = "silver")
@@ -142,17 +140,18 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- DBTITLE 1,Quarantine Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-  -- TO DO: Add constraint to only flag records if next_payment_date is less or equal to date('2020-12-31') --
+  -- TO DO: Add constraint to "flag" records but not take an action on them, when next_payment_date is less or equal to date('2020-12-31') --
   <FILL_IN> 
   CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0),
   CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) 
 )
 TBLPROPERTIES 
-("quality"="silver",
-"pipelines.autoOptimize.managed"="true",
-"pipelines.autoOptimize.zOrderCols"="CustomerID,InvoiceNo",
-"pipelines.trigger.interval"="1 hour"
- )
+(
+  "quality"="silver",
+  "pipelines.autoOptimize.managed"="true",
+  "pipelines.autoOptimize.zOrderCols"="CustomerID,InvoiceNo",
+  "pipelines.trigger.interval"="1 hour"
+)
 AS SELECT txs.*, rat.id as accounting_treatment FROM stream(LIVE.raw_txs) txs
 INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id;
 
@@ -175,7 +174,7 @@ INNER JOIN LIVE.ref_accounting_treatment b USING (id)
 -- MAGIC 
 -- MAGIC Our last step is to materialize the Gold Layer.
 -- MAGIC 
--- MAGIC Because these tables will be requested at scale using a SQL Endpoint, we'll add Zorder at the table level to ensure faster queries using `pipelines.autoOptimize.zOrderCols`, and DLT will handle the rest.
+-- MAGIC Because these tables will be requested at scale using a SQL Endpoint, we'll add Zorder at the table level to ensure faster queries using `pipelines.autoOptimize.zOrderCols`
 
 -- COMMAND ----------
 
@@ -211,7 +210,7 @@ UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleane
 -- MAGIC 
 -- MAGIC - Expectations on views validate correctness of intermediate results (data quality metrics for views are not designed to be observable in UI)
 -- MAGIC 
--- MAGIC - Views are recomputed every time they are required
+-- MAGIC - Views are not persisted, and fully recomputed when invoked
 
 -- COMMAND ----------
 
@@ -227,7 +226,7 @@ GROUP BY country_code
 
 -- COMMAND ----------
 
--- TO DO: Create a View of total balance per cost_center_code from cleaned_new_txs table and call it new_loan_balances_by_cost_center --
+-- TODO: Create a view of total balance (sum) per each cost_center_code from the cleaned_new_txs table and call it new_loan_balances_by_cost_center --
  <FILL_IN> 
 COMMENT "Live voew of new loan balances for consumption by different cost centers"
 TBLPROPERTIES (
