@@ -57,7 +57,7 @@
 CREATE STREAMING LIVE TABLE raw_txs     -- TO DO --
 COMMENT "New raw loan data incrementally ingested from cloud object storage landing zone"
 TBLPROPERTIES ("quality" = "bronze")
-AS SELECT * FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")) -- input_data: /home/firstname.lastname@databricks.com
+AS SELECT * FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue"))
 
 -- COMMAND ----------
 
@@ -122,10 +122,9 @@ AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/`
 
 -- DBTITLE 1,Perform ETL & Enforce Quality Expectations
 CREATE STREAMING LIVE TABLE cleaned_new_txs (
-  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date > date('2020-12-31')) ON VIOLATION DROP ROW, -- TO DO --
+  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date > date('2021-12-31')) ON VIOLATION DROP ROW, 
   CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
-  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) ON VIOLATION FAIL UPDATE         -- TO DO --
-  -- Roadmap: Quarantine
+  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) ON VIOLATION FAIL UPDATE         
 )
 COMMENT "Livestream of new transactions, cleaned and compliant"
 TBLPROPERTIES ("quality" = "silver")
@@ -134,19 +133,21 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 
 -- COMMAND ----------
 
--- DBTITLE 1,Quarantine Data with Expectations
+-- MAGIC %md
+-- MAGIC You’ve defined expectations to filter out records that violate data quality constraints, but you also want to save the invalid records for analysis. Create rules that are the inverse of the expectations you’ve defined and use those rules to save the invalid records to a separate table. 
+
+-- COMMAND ----------
+
+-- DBTITLE 1,Quarantine Invalid Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date > date('2020-12-31')),   -- TO DO --
-  CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0),
-  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) 
+  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date <= date('2021-12-31')) ON VIOLATION DROP ROW,   
+  CONSTRAINT `Balance should be positive`    EXPECT (balance <= 0 AND arrears_balance <= 0) ON VIOLATION DROP ROW,
+  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NULL) ON VIOLATION DROP ROW    
 )
+COMMENT "Livestream of quarantined invalid records"
 TBLPROPERTIES 
-("quality"="silver",
-"pipelines.autoOptimize.managed"="true",
-"pipelines.autoOptimize.zOrderCols"="CustomerID,InvoiceNo",
-"pipelines.trigger.interval"="1 hour"
- )
+("quality"="silver")
 AS SELECT txs.*, rat.id as accounting_treatment FROM stream(LIVE.raw_txs) txs
 INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id;
 
