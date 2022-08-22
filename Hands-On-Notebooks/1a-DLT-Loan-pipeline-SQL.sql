@@ -152,10 +152,9 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- DBTITLE 1,Quarantine Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-  -- TODO: Add constraint to quarantine invalid records, when next_payment_date is less or equal to date('2021-12-31') --
-  <FILL_IN> 
+  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date <= date('2021-12-31')) ON VIOLATION DROP ROW,   
   CONSTRAINT `Balance should be positive`    EXPECT (balance <= 0 AND arrears_balance <= 0) ON VIOLATION DROP ROW,
-  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NULL) ON VIOLATION DROP ROW   
+  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NULL) ON VIOLATION DROP ROW
 )
 COMMENT "Livestream of quarantined invalid records"
 TBLPROPERTIES 
