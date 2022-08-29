@@ -276,7 +276,7 @@ dlt.apply_changes(
 ##Create the scd2 target table 
 """
 
-dlt.create_target_table(name="scd2_customer_silver",
+dlt.create_streaming_live_table(name="scd2_customer_silver",
   comment="Slowly Changing Dimension Type 2 for customers")
 
 # COMMAND ----------

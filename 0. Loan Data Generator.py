@@ -18,7 +18,7 @@
 path = dbutils.widgets.get("StoragePath")
 batch_wait = dbutils.widgets.get("Speed")
 num_recs = dbutils.widgets.get("Volume")
-
+dbutils.jobs.taskValues.set("input_data", "/home/techsummit/dlt")
 print("Using path: {}".format(path))
 print(path)
 
