@@ -63,7 +63,7 @@
 CREATE STREAMING LIVE TABLE raw_txs    
 COMMENT "New raw loan data incrementally ingested from cloud object storage landing zone"
 TBLPROPERTIES ("quality" = "bronze")
-AS SELECT * FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue"))
+AS SELECT * FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue"));
 
 -- COMMAND ----------
 
@@ -76,7 +76,7 @@ TBLPROPERTIES --Can be spark, delta, or DLT confs
 "pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo",
 "pipelines.trigger.interval"="1 hour"
  )
-AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"))  -- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"));  -- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 
 -- COMMAND ----------
 
@@ -96,7 +96,7 @@ AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnT
 -- DBTITLE 1,Read Raw Data Stored in Delta Tables in DLT (Table 2: ref_accounting_treatment) with Parametrization
 CREATE LIVE TABLE ref_accounting_treatment    
 COMMENT "Lookup mapping for accounting codes"
-AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` 
+AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` ;
 
 -- COMMAND ----------
 
@@ -135,7 +135,7 @@ CREATE STREAMING LIVE TABLE cleaned_new_txs (
 COMMENT "Livestream of new transactions, cleaned and compliant"
 TBLPROPERTIES ("quality" = "silver")
 AS SELECT txs.*, rat.id as accounting_treatment FROM stream(LIVE.raw_txs) txs
-INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id
+INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id;
 
 -- COMMAND ----------
 
@@ -164,7 +164,7 @@ CREATE LIVE TABLE historical_txs
 COMMENT "Historical loan transactions"
 TBLPROPERTIES ("quality" = "silver")
 AS SELECT a.* FROM LIVE.reference_loan_stats a
-INNER JOIN LIVE.ref_accounting_treatment b USING (id)
+INNER JOIN LIVE.ref_accounting_treatment b USING (id);
 
 -- COMMAND ----------
 
@@ -187,7 +187,7 @@ TBLPROPERTIES (
   "pipelines.autoOptimize.zOrderCols" = "location_code"
 )
 AS SELECT sum(revol_bal)  AS bal, addr_state   AS location_code FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code
+UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code;
 
 -- COMMAND ----------
 
@@ -195,7 +195,7 @@ CREATE LIVE TABLE total_loan_balances_2
 COMMENT "Combines historical and new loan data for unified rollup of loan balances"
 TBLPROPERTIES ("quality" = "gold")
 AS SELECT sum(revol_bal)  AS bal, addr_state   AS location_code FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code
+UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code;
 
 -- COMMAND ----------
 
@@ -224,7 +224,7 @@ TBLPROPERTIES (
 )
 AS SELECT sum(balance), cost_center_code
 FROM live.cleaned_new_txs
-GROUP BY cost_center_code
+GROUP BY cost_center_code;
 
 -- COMMAND ----------
 
@@ -236,7 +236,7 @@ TBLPROPERTIES (
 )
 AS SELECT sum(count), country_code
 FROM live.cleaned_new_txs
-GROUP BY country_code
+GROUP BY country_code;
 
 -- COMMAND ----------
 
@@ -268,7 +268,7 @@ CREATE STREAMING LIVE TABLE risk_prediction_dlt
 COMMENT "Risk prediction generated with our model from MLFlow registry"
 AS SELECT *, 
 loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
-FROM STREAM(live.reference_loan_stats)
+FROM STREAM(live.reference_loan_stats);
 
 -- COMMAND ----------
 

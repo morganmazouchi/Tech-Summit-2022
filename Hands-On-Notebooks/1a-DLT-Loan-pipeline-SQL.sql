@@ -60,12 +60,12 @@
 -- COMMAND ----------
 
 -- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 1: raw_txs) with Parameterization
- -- TODO: Create a streaming table and name it raw_txt  --
+ -- TODO: Create a streaming table and name it raw_txs  --
 <FILL_IN>  
 COMMENT "New raw loan data incrementally ingested from cloud object storage landing zone"
 TBLPROPERTIES ("quality" = "bronze")
 AS SELECT * 
-FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")) -- TODO: add input_data to pipeline configuration setting using /home/techsummit/dlt
+FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")); -- TODO: add input_data to pipeline configuration setting using /home/techsummit/dlt
 
 -- COMMAND ----------
 
@@ -78,7 +78,7 @@ TBLPROPERTIES --Can be spark, delta, or DLT confs
 "pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo",
 "pipelines.trigger.interval"="1 hour"
  )
-AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"))  -- TODO: set loanStats to pipeline configuration setting using: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"));  -- TODO: set loanStats to pipeline configuration setting using: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 
 -- COMMAND ----------
 
@@ -140,7 +140,7 @@ CREATE STREAMING LIVE TABLE cleaned_new_txs (
 COMMENT "Livestream of new transactions, cleaned and compliant"
 TBLPROPERTIES ("quality" = "silver")
 AS SELECT txs.*, rat.id as accounting_treatment FROM stream(LIVE.raw_txs) txs
-INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id
+INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id;
 
 -- COMMAND ----------
 
@@ -169,7 +169,7 @@ CREATE LIVE TABLE historical_txs
 COMMENT "Historical loan transactions"
 TBLPROPERTIES ("quality" = "silver")
 AS SELECT a.* FROM LIVE.reference_loan_stats a
-INNER JOIN LIVE.ref_accounting_treatment b USING (id)
+INNER JOIN LIVE.ref_accounting_treatment b USING (id);
 
 -- COMMAND ----------
 
@@ -192,7 +192,7 @@ TBLPROPERTIES (
   "pipelines.autoOptimize.zOrderCols" = "location_code"
 )
 AS SELECT sum(revol_bal)  AS bal, addr_state   AS location_code FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code
+UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code;
 
 -- COMMAND ----------
 
@@ -200,7 +200,7 @@ CREATE LIVE TABLE total_loan_balances_2
 COMMENT "Combines historical and new loan data for unified rollup of loan balances"
 TBLPROPERTIES ("quality" = "gold")
 AS SELECT sum(revol_bal)  AS bal, addr_state   AS location_code FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code
+UNION SELECT sum(balance) AS bal, country_code AS location_code FROM live.cleaned_new_txs GROUP BY country_code;
 
 -- COMMAND ----------
 
@@ -289,12 +289,15 @@ FROM STREAM(live.reference_loan_stats)
 -- MAGIC Here is a setting example including the python UDF and the SQL function notebooks. 
 -- MAGIC 
 -- MAGIC * Note: use unique value to set your target (recommended target: firstnamelastnameDB)
+-- MAGIC * Note: use unique value to set your Storage (recommended Storage location: firstnamelastname_logs_storage)
 -- MAGIC * Note the multiple entries (1 per notebook) in the "libraries" option, you need to add path to both notebooks
 -- MAGIC * Add data location paths as two parameters in your pipeline configuration:
 -- MAGIC 
 -- MAGIC       - key: loanStats , value: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 -- MAGIC       - key: input_data, value: /home/techsummit/dlt
--- MAGIC       
+-- MAGIC     
+-- MAGIC * For this hands on session, please disable autoscale and only use 1 worker.
+-- MAGIC 
 -- MAGIC Below is an example json file of a DLT pipeline's settings:
 -- MAGIC 
 -- MAGIC ```
@@ -327,7 +330,7 @@ FROM STREAM(live.reference_loan_stats)
 -- MAGIC         }
 -- MAGIC     ],
 -- MAGIC     "name": "Tech-summit-step2",
--- MAGIC     "storage": "/tmp/logs",
+-- MAGIC     "storage": "/morganmazouchi_logs_storage/logs",
 -- MAGIC     "configuration": {
 -- MAGIC         "loanStats": "/databricks-datasets/lending-club-loan-stats/LoanStats_*",
 -- MAGIC         "input_data": "/home/techsummit/dlt"
