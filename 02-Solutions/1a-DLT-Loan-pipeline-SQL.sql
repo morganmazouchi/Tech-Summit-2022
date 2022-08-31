@@ -76,7 +76,8 @@ TBLPROPERTIES --Can be spark, delta, or DLT confs
 "pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo",
 "pipelines.trigger.interval"="1 hour"
  )
-AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"));  -- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"));   
+-- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 
 -- COMMAND ----------
 
@@ -254,6 +255,7 @@ GROUP BY country_code;
 
 -- DBTITLE 1,Load the Model as SQL Function in a Separate Notebook!
 -- MAGIC %python
+-- MAGIC 
 -- MAGIC import mlflow
 -- MAGIC #                                                                                           output
 -- MAGIC #                                                                 Model name    stage          |
@@ -290,45 +292,79 @@ FROM STREAM(live.reference_loan_stats);
 -- MAGIC       - key: input_data, value: /home/techsummit/dlt
 -- MAGIC       
 -- MAGIC Below is an example json file of a DLT pipeline's settings:
+
+-- COMMAND ----------
+
+-- DBTITLE 1,Please run this cell in the notebook to get your custom DLT JSON configuration
+-- MAGIC %python
+-- MAGIC def print_pipeline_configuration():
+-- MAGIC   import re
+-- MAGIC   import json
 -- MAGIC 
--- MAGIC ```
--- MAGIC {
--- MAGIC     "id": "5edee273-d5bc-423b-aa30-1f003dc423a7",
--- MAGIC     "clusters": [
--- MAGIC         {
--- MAGIC             "label": "default",
--- MAGIC             "autoscale": {
--- MAGIC                 "min_workers": 1,
--- MAGIC                 "max_workers": 5
+-- MAGIC   current_user = dbutils.notebook.entry_point.getDbutils().notebook().getContext().tags().apply('user')
+-- MAGIC   if current_user.rfind("@") > 0:
+-- MAGIC     current_user_no_at = current_user[:current_user.rfind('@')]
+-- MAGIC   else:
+-- MAGIC     current_user_no_at = current_user
+-- MAGIC   current_user_no_at = re.sub(r'\W+', '_', current_user_no_at)
+-- MAGIC 
+-- MAGIC   if dbutils.notebook.entry_point.getDbutils().notebook().getContext().browserHostName().get() == "e2-demo-field-eng.cloud.databricks.com":
+-- MAGIC     pool = "0727-104344-hauls13-pool-uftxk0r6"
+-- MAGIC   elif dbutils.notebook.entry_point.getDbutils().notebook().getContext().browserHostName().get() == "cse2.cloud.databricks.com":
+-- MAGIC     pool = "0831-121407-yeahs13-pool-rym2rkke"
+-- MAGIC   else:
+-- MAGIC     pool = None
+-- MAGIC 
+-- MAGIC   path = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().getOrElse(None)
+-- MAGIC   path = path[:path.rfind("/")]
+-- MAGIC 
+-- MAGIC   conf = {
+-- MAGIC         "clusters": [
+-- MAGIC             {
+-- MAGIC                 "label": "default",
+-- MAGIC                 "num_workers": 0,
+-- MAGIC                 "spark_conf": {
+-- MAGIC                   "spark.master": "local[*, 4]",
+-- MAGIC                   "spark.databricks.cluster.profile": "singleNode"
+-- MAGIC                 },
+-- MAGIC                 "custom_tags": {
+-- MAGIC                   "ResourceClass": "SingleNode"
+-- MAGIC                 },
+-- MAGIC                 "instance_pool_id": pool,
+-- MAGIC                 "driver_instance_pool_id": pool
 -- MAGIC             }
--- MAGIC         }
--- MAGIC     ],
--- MAGIC     "development": true,
--- MAGIC     "continuous": false,
--- MAGIC     "channel": "PREVIEW",
--- MAGIC     "edition": "ADVANCED",
--- MAGIC     "photon": false,
--- MAGIC     "libraries": [
--- MAGIC         {
--- MAGIC             "notebook": {
--- MAGIC                 "path": "/Repos/mojgan.mazouchi@databricks.com/Tech-Summit-2022/Solutions/1a-DLT-Loan-pipeline-SQL"
--- MAGIC             }
--- MAGIC         },
--- MAGIC         {
--- MAGIC             "notebook": {
--- MAGIC                 "path": "/Repos/mojgan.mazouchi@databricks.com/Tech-Summit-2022/Solutions/1b-SQL-Delta-Live-Table-Python-UDF"
--- MAGIC             }
--- MAGIC         }
--- MAGIC     ],
--- MAGIC     "name": "Tech-summit-step2",
--- MAGIC     "storage": "/tmp/logs",
--- MAGIC     "configuration": {
--- MAGIC         "loanStats": "/databricks-datasets/lending-club-loan-stats/LoanStats_*",
--- MAGIC         "input_data": "/home/techsummit/dlt"
--- MAGIC     },
--- MAGIC     "target": "morganmazouchiDB"
--- MAGIC }
--- MAGIC ```
+-- MAGIC         ],
+-- MAGIC       "development": True,
+-- MAGIC       "continuous": False,
+-- MAGIC       "channel": "PREVIEW",
+-- MAGIC       "edition": "ADVANCED",
+-- MAGIC       "photon": False,
+-- MAGIC       "libraries": [
+-- MAGIC           {
+-- MAGIC               "notebook": {
+-- MAGIC                   "path": path+"/1a-DLT-Loan-pipeline-SQL"
+-- MAGIC               }
+-- MAGIC           },
+-- MAGIC           {
+-- MAGIC               "notebook": {
+-- MAGIC                   "path": path+"/1b-SQL-Delta-Live-Table-Python-UDF"
+-- MAGIC               }
+-- MAGIC           }
+-- MAGIC       ],
+-- MAGIC       "name": f"dlt-summit-step2-{current_user_no_at}",
+-- MAGIC       "storage": f"/techsummit/dlt/storage/{current_user_no_at}",
+-- MAGIC       "configuration": {
+-- MAGIC           "loanStats": "/databricks-datasets/lending-club-loan-stats/LoanStats_*",
+-- MAGIC           "input_data": "/home/techsummit/dlt"
+-- MAGIC       },
+-- MAGIC       "target": f"dlt_techsummit_{current_user_no_at}"
+-- MAGIC   }
+-- MAGIC   
+-- MAGIC   print("---------------------------------------------------------------------------------")
+-- MAGIC   print("MAKE SURE YOU RUN THIS CELL TO GET A CONFIGURATION WITH YOUR USER NAME AND FOLDER")
+-- MAGIC   print("---------------------------------------------------------------------------------")
+-- MAGIC   print(json.dumps(conf, indent=4))
+-- MAGIC print_pipeline_configuration()
 
 -- COMMAND ----------
 
