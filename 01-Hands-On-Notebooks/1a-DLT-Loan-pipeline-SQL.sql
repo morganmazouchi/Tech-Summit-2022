@@ -111,9 +111,9 @@ COMMENT "Lookup mapping for accounting codes"
 -- MAGIC 
 -- MAGIC <img style="float: right; padding-left: 10px" src="https://github.com/QuentinAmbard/databricks-demo/raw/main/product_demos/dlt-golden-demo-3.png" width="500"/>
 -- MAGIC 
--- MAGIC Once the bronze layer is defined, we'll create the sliver layers by Joining data. Note that bronze tables are referenced using the `LIVE` spacename. 
+-- MAGIC Once the bronze layer is defined, we'll create the sliver layers by Joining data. Note that bronze tables are referenced using the `LIVE` namespace. 
 -- MAGIC 
--- MAGIC To consume only increment from the Bronze layer like `raw_txs`, we'll be using the `stream` keyworkd: `stream(LIVE.raw_txs)`
+-- MAGIC To consume only increment from the Bronze layer like `raw_txs`, we'll be using the `stream` keyword: `stream(LIVE.raw_txs)`
 -- MAGIC 
 -- MAGIC Note that we don't have to worry about compactions, DLT handles that for us.
 -- MAGIC 
@@ -123,7 +123,7 @@ COMMENT "Lookup mapping for accounting codes"
 -- MAGIC 
 -- MAGIC | Mode | Behavior |
 -- MAGIC | ---- | -------- |
--- MAGIC | `EXPECT` in SQL or `@dlt.expect` in Python  | Record metrics for percentage of records that fulfill expectation <br> (**NOTE**: this metric is reported for all execution modes) |
+-- MAGIC | `EXPECT` in SQL or `@dlt.expect` in Python  | Record metrics for percentage of records that violate expectation <br> (**NOTE**: this metric is reported for all execution modes) |
 -- MAGIC | `EXPECT (cost_center_code IS NOT NULL) ON VIOLATION FAIL UPDATE` in SQL or `@dlt.expect_or_fail` in Python| Fail the pipeline when expectation is not met |
 -- MAGIC | `EXPECT (criteria) ON VIOLATION DROP ROW` in SQL or `@dlt.expect_or_drop` in Python| Only process records that fulfill expectations |
 -- MAGIC 
@@ -249,10 +249,7 @@ GROUP BY cost_center_code
 -- COMMAND ----------
 
 -- MAGIC %md-sandbox
--- MAGIC ## Enriching the gold data with a ML model
--- MAGIC <div style="float:right">
--- MAGIC   <img width="500px" src="https://github.com/QuentinAmbard/databricks-demo/raw/main/retail/resources/images/retail-ingestion-dlt-step5.png"/>
--- MAGIC </div>
+-- MAGIC ## Enriching data with a ML model
 -- MAGIC 
 -- MAGIC Our Data scientist team has build a loan risk analysis model and saved it into Databricks Model registry. 
 -- MAGIC 
@@ -331,14 +328,7 @@ FROM STREAM(live.reference_loan_stats)
 -- MAGIC         "clusters": [
 -- MAGIC             {
 -- MAGIC                 "label": "default",
--- MAGIC                 "num_workers": 0,
--- MAGIC                 "spark_conf": {
--- MAGIC                   "spark.master": "local[*, 4]",
--- MAGIC                   "spark.databricks.cluster.profile": "singleNode"
--- MAGIC                 },
--- MAGIC                 "custom_tags": {
--- MAGIC                   "ResourceClass": "SingleNode"
--- MAGIC                 },
+-- MAGIC                 "num_workers": 1,
 -- MAGIC                 "instance_pool_id": pool,
 -- MAGIC                 "driver_instance_pool_id": pool
 -- MAGIC             }

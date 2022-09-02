@@ -15,3 +15,10 @@ import mlflow
 
 loan_risk_pred_udf = mlflow.pyfunc.spark_udf(spark, "models:/mlflow-loan-risk/Production", "string")
 spark.udf.register("loan_risk_prediction", loan_risk_pred_udf)
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC 
+# MAGIC SELECT *, loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
+# MAGIC FROM loan_stats

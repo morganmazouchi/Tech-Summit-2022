@@ -76,8 +76,7 @@ TBLPROPERTIES --Can be spark, delta, or DLT confs
 "pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo",
 "pipelines.trigger.interval"="1 hour"
  )
-AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"));   
--- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true")) -- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 
 -- COMMAND ----------
 
@@ -242,10 +241,7 @@ GROUP BY country_code;
 -- COMMAND ----------
 
 -- MAGIC %md-sandbox
--- MAGIC ## Enriching the gold data with a ML model
--- MAGIC <div style="float:right">
--- MAGIC   <img width="500px" src="https://github.com/QuentinAmbard/databricks-demo/raw/main/retail/resources/images/retail-ingestion-dlt-step5.png"/>
--- MAGIC </div>
+-- MAGIC ## Enriching data with a ML model
 -- MAGIC 
 -- MAGIC Our Data scientist team has build a loan risk analysis model and saved it into Databricks Model registry. 
 -- MAGIC 
@@ -269,8 +265,8 @@ GROUP BY country_code;
 CREATE STREAMING LIVE TABLE risk_prediction_dlt
 COMMENT "Risk prediction generated with our model from MLFlow registry"
 AS SELECT *, 
-loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
-FROM STREAM(live.reference_loan_stats);
+loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred  
+FROM STREAM(live.reference_loan_stats)
 
 -- COMMAND ----------
 
@@ -322,14 +318,7 @@ FROM STREAM(live.reference_loan_stats);
 -- MAGIC         "clusters": [
 -- MAGIC             {
 -- MAGIC                 "label": "default",
--- MAGIC                 "num_workers": 0,
--- MAGIC                 "spark_conf": {
--- MAGIC                   "spark.master": "local[*, 4]",
--- MAGIC                   "spark.databricks.cluster.profile": "singleNode"
--- MAGIC                 },
--- MAGIC                 "custom_tags": {
--- MAGIC                   "ResourceClass": "SingleNode"
--- MAGIC                 },
+-- MAGIC                 "num_workers": 1,
 -- MAGIC                 "instance_pool_id": pool,
 -- MAGIC                 "driver_instance_pool_id": pool
 -- MAGIC             }
