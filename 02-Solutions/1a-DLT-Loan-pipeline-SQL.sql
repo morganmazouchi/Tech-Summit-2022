@@ -67,7 +67,7 @@ AS SELECT * FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.sc
 
 -- COMMAND ----------
 
--- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 3: reference_loan_stats) + Optimize Data Layout for Performance
+-- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 2: reference_loan_stats) + Optimize Data Layout for Performance
 CREATE STREAMING LIVE TABLE reference_loan_stats
 COMMENT "Raw historical transactions"
 TBLPROPERTIES --Can be spark, delta, or DLT confs
@@ -93,7 +93,7 @@ AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnT
 
 -- COMMAND ----------
 
--- DBTITLE 1,Read Raw Data Stored in Delta Tables in DLT (Table 2: ref_accounting_treatment) with Parametrization
+-- DBTITLE 1,Read Raw Data Stored in Delta Tables in DLT (Table 3: ref_accounting_treatment) with Parametrization
 CREATE LIVE TABLE ref_accounting_treatment    
 COMMENT "Lookup mapping for accounting codes"
 AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` ;

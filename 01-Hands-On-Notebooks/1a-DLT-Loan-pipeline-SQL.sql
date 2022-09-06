@@ -70,7 +70,7 @@ FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutio
 
 -- COMMAND ----------
 
--- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 3: reference_loan_stats) + Optimize Data Layout for Performance
+-- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 2: reference_loan_stats) + Optimize Data Layout for Performance
 CREATE STREAMING LIVE TABLE reference_loan_stats
 COMMENT "Raw historical transactions"
 TBLPROPERTIES --Can be spark, delta, or DLT confs
@@ -97,7 +97,7 @@ AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnT
 
 -- COMMAND ----------
 
--- DBTITLE 1,Read Raw Data Stored in Delta Tables in DLT (Table 2: ref_accounting_treatment) with Parametrization
+-- DBTITLE 1,Read Raw Data Stored in Delta Tables in DLT (Table 3: ref_accounting_treatment) with Parametrization
 -- TODO: Create a table called ref_accounting_treatment that will be a batch load of the data located at "${input_data}/ref_accounting_treatment/", and name it ref_accounting_treatment
 <FILL_IN> 
 COMMENT "Lookup mapping for accounting codes"
@@ -283,7 +283,7 @@ FROM STREAM(live.reference_loan_stats)
 -- MAGIC 
 -- MAGIC ##### Note: You need to include the second python notebook in addition to this notebook in your pipeline!
 -- MAGIC 
--- MAGIC Navigate to the workflows in the menue, switch to delta live tables and click on create a pipeline! 
+-- MAGIC Navigate to the workflows in the menu, switch to delta live tables and click on create a pipeline! 
 -- MAGIC 
 -- MAGIC Here is a setting example including the python UDF and the SQL function notebooks. 
 -- MAGIC 
