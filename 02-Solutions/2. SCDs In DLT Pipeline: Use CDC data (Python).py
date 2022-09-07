@@ -225,7 +225,7 @@ def customer_bronze_clean_v():
 ##Create the scd 1 target table 
 """
 
-dlt.create_target_table(name="scd1_customer_silver",
+dlt.create_streaming_live_table(name="scd1_customer_silver",
   comment="Clean, materialized up-to-date records of customers")
 
 # COMMAND ----------
