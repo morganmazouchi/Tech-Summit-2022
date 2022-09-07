@@ -32,7 +32,7 @@
 -- MAGIC 
 -- MAGIC <img style="float: right; padding-left: 10px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022%20-%20autoloader.png" width="800"/>
 -- MAGIC 
--- MAGIC Our raw data is being sent to a blob storage. 
+-- MAGIC Our raw data is being sent to a cloud storage. 
 -- MAGIC 
 -- MAGIC Autoloader simplify this ingestion, including schema inference, schema evolution while being able to scale to millions of incoming files. 
 -- MAGIC 
