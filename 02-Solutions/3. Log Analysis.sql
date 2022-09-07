@@ -10,7 +10,7 @@
 
 -- MAGIC %python
 -- MAGIC dbutils.widgets.removeAll()
--- MAGIC dbutils.widgets.text('storage_location', '/home/first.last@databricks.com')
+-- MAGIC dbutils.widgets.text('storage_location', '/techsummit/dlt/storage/first_last')
 -- MAGIC dbutils.widgets.text('latest_update_id', 'Update_ID_fromUpdateDetails')
 
 -- COMMAND ----------
