@@ -130,7 +130,7 @@ COMMENT "Lookup mapping for accounting codes"
 
 -- DBTITLE 1,Perform ETL & Enforce Quality Expectations
 CREATE STREAMING LIVE TABLE cleaned_new_txs (
-  -- TODO: Add constraint to remove any records that next_payment_date is above or equal to date('2021-12-31') --
+  -- TODO: Add constraint to remove any records that next_payment_date is less to date('2021-12-31') --
   <FILL_IN>
   CONSTRAINT `Balance should be positive` EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
   -- TODO: Add constraint that fails the entire update upon observing a null value in cost_center_code field --

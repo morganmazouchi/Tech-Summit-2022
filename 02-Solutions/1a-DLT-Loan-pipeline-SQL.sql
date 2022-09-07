@@ -364,6 +364,42 @@ FROM STREAM(live.reference_loan_stats)
 
 -- COMMAND ----------
 
+{
+    "id": "e7d8d0d1-3377-4a8c-97ed-daf9ed6f8243",
+    "clusters": [
+        {
+            "label": "default",
+            "autoscale": {
+                "min_workers": 1,
+                "max_workers": 5,
+                "mode": "ENHANCED"
+            }
+        }
+    ],
+    "development": true,
+    "continuous": false,
+    "channel": "CURRENT",
+    "edition": "ADVANCED",
+    "photon": false,
+    "libraries": [
+        {
+            "notebook": {
+                "path": "/Users/rahul.soni@databricks.com/Tech-Summit-2022/02-Solutions/1a-DLT-Loan-pipeline-SQL"
+            }
+        },
+        {
+            "notebook": {
+                "path": "/Users/rahul.soni@databricks.com/Tech-Summit-2022/02-Solutions/1b-SQL-Delta-Live-Table-Python-UDF"
+            }
+        }
+    ],
+    "name": "tech_summit_rsoni",
+    "storage": "/Users/rahul.soni@databricks.com/tech_summit",
+    "target": "tech_summit_rsoni"
+}
+
+-- COMMAND ----------
+
 -- MAGIC %md ## Tracking data quality
 -- MAGIC 
 -- MAGIC Expectations stats are automatically available as system table.
