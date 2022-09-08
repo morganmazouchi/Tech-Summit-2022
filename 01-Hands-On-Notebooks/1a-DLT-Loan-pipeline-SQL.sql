@@ -356,20 +356,12 @@ FROM STREAM(live.reference_loan_stats)
 -- MAGIC ##### Note: You need to include the second python notebook in addition to this notebook in your pipeline!
 -- MAGIC 
 -- MAGIC Navigate to the workflows in the menu, switch to delta live tables and click on create a pipeline! 
--- MAGIC 
--- MAGIC Here is a setting example including the python UDF and the SQL function notebooks. 
--- MAGIC 
--- MAGIC * Note: use unique value to set your target (recommended target: firstnamelastnameDB)
--- MAGIC * Note: use unique value to set your Storage (recommended Storage location: firstnamelastname_logs_storage)
--- MAGIC * Note the multiple entries (1 per notebook) in the "libraries" option, you need to add path to both notebooks
--- MAGIC * Add data location paths as two parameters in your pipeline configuration:
+-- MAGIC * Note you need to add data location paths as two parameters in your pipeline configuration:
 -- MAGIC 
 -- MAGIC       - key: loanStats , value: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 -- MAGIC       - key: input_data, value: /home/techsummit/dlt
 -- MAGIC     
 -- MAGIC * For this hands on session, please disable autoscale and only use 1 worker.
--- MAGIC 
--- MAGIC Run the script below to get the json setting you can use for for your of a DLT pipeline:
 
 -- COMMAND ----------
 

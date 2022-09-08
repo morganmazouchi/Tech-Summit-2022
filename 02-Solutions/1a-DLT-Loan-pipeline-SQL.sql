@@ -351,16 +351,10 @@ FROM STREAM(live.reference_loan_stats)
 -- MAGIC 
 -- MAGIC Navigate to the workflows in the menue, switch to delta live tables and click on create a pipeline! 
 -- MAGIC 
--- MAGIC Here is a setting example including the python UDF and the SQL function notebooks. 
--- MAGIC 
--- MAGIC * Note: use unique value to set your target (recommended target: firstnamelastnameDB)
--- MAGIC * Note the multiple entries (1 per notebook) in the "libraries" option, you need to add path to both notebooks
--- MAGIC * Add data location paths as two parameters in your pipeline configuration:
+-- MAGIC * Note you need to add data location paths as two parameters in your pipeline configuration:
 -- MAGIC 
 -- MAGIC       - key: loanStats , value: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 -- MAGIC       - key: input_data, value: /home/techsummit/dlt
--- MAGIC       
--- MAGIC Below is an example json file of a DLT pipeline's settings:
 
 -- COMMAND ----------
 
