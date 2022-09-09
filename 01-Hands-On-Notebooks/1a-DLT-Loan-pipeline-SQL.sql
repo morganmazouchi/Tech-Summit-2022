@@ -196,7 +196,7 @@ COMMENT "Lookup mapping for accounting codes"
 
 -- DBTITLE 1,Perform ETL & Enforce Quality Expectations
 CREATE STREAMING LIVE TABLE cleaned_new_txs (
-  -- TODO: Add constraint to remove any records that next_payment_date is less to date('2021-12-31') --
+  -- TODO: Add constraint to remove any records that next_payment_date is less or equal to date('2021-12-31') --
   <FILL_IN>
   CONSTRAINT `Balance should be positive` EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
   -- TODO: Add constraint that fails the entire update upon observing a null value in cost_center_code field --
@@ -217,9 +217,7 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- DBTITLE 1,Quarantine Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date <= date('2021-12-31')) ON VIOLATION DROP ROW,   
-  CONSTRAINT `Balance should be positive`    EXPECT (balance <= 0 AND arrears_balance <= 0) ON VIOLATION DROP ROW,
-  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NULL) ON VIOLATION DROP ROW
+  CONSTRAINT `dropped rows` EXPECT ((next_payment_date <= '2020-12-31') OR (balance <= 0 OR arrears_balance <= 0) OR (cost_center_code IS NULL)) ON VIOLATION DROP ROW
 )
 COMMENT "Livestream of quarantined invalid records"
 TBLPROPERTIES 

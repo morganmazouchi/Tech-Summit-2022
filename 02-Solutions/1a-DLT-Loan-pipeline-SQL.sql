@@ -191,7 +191,8 @@ AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` ;
 -- COMMAND ----------
 
 -- DBTITLE 1,Perform ETL & Enforce Quality Expectations
-CREATE STREAMING LIVE TABLE cleaned_new_txs (
+CREATE STREAMING LIVE TABLE cleaned_new_txs 
+(
   CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date > date('2021-12-31')) ON VIOLATION DROP ROW, 
   CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
   CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) ON VIOLATION FAIL UPDATE         
@@ -211,13 +212,10 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- DBTITLE 1,Quarantine Invalid Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date <= date('2021-12-31')) ON VIOLATION DROP ROW,   
-  CONSTRAINT `Balance should be positive`    EXPECT (balance <= 0 AND arrears_balance <= 0) ON VIOLATION DROP ROW,
-  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NULL) ON VIOLATION DROP ROW
+   CONSTRAINT `dropped rows` EXPECT ((next_payment_date <= '2020-12-31') OR (balance <= 0 OR arrears_balance <= 0) OR (cost_center_code IS NULL)) ON VIOLATION DROP ROW
 )
 COMMENT "Livestream of quarantined invalid records"
-TBLPROPERTIES 
-("quality"="silver")
+TBLPROPERTIES ("quality"="silver")
 AS SELECT txs.*, rat.id as accounting_treatment FROM stream(LIVE.raw_txs) txs
 INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id;
 
