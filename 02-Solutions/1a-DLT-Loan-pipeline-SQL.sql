@@ -133,13 +133,13 @@ AS SELECT * FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.sc
 -- COMMAND ----------
 
 -- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 2: reference_loan_stats) + Optimize Data Layout for Performance
+SET pipelines.trigger.interval='1 hour';
 CREATE STREAMING LIVE TABLE reference_loan_stats
 COMMENT "Raw historical transactions"
 TBLPROPERTIES --Can be spark, delta, or DLT confs
 ("quality"="bronze",
 "pipelines.autoOptimize.managed"="true",
-"pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo",
-"pipelines.trigger.interval"="1 hour"
+"pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo"
  )
 AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true")) -- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 
@@ -191,8 +191,7 @@ AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` ;
 -- COMMAND ----------
 
 -- DBTITLE 1,Perform ETL & Enforce Quality Expectations
-CREATE STREAMING LIVE TABLE cleaned_new_txs 
-(
+CREATE STREAMING LIVE TABLE cleaned_new_txs (
   CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date > date('2021-12-31')) ON VIOLATION DROP ROW, 
   CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
   CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) ON VIOLATION FAIL UPDATE         
@@ -212,10 +211,11 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- DBTITLE 1,Quarantine Invalid Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-   CONSTRAINT `dropped rows` EXPECT ((next_payment_date <= '2020-12-31') OR (balance <= 0 OR arrears_balance <= 0) OR (cost_center_code IS NULL)) ON VIOLATION DROP ROW
+  CONSTRAINT `dropped rows` EXPECT ((next_payment_date <= '2021-12-31') OR (balance <= 0 OR arrears_balance <= 0) OR (cost_center_code IS NULL)) ON VIOLATION DROP ROW
 )
 COMMENT "Livestream of quarantined invalid records"
-TBLPROPERTIES ("quality"="silver")
+TBLPROPERTIES 
+("quality"="silver")
 AS SELECT txs.*, rat.id as accounting_treatment FROM stream(LIVE.raw_txs) txs
 INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id;
 

@@ -62,6 +62,8 @@ ORDER BY timestamp;
 -- DBTITLE 1,Data Quality Metrics
 SELECT
   id,
+  timestamp,
+  status_update,
   expectations.dataset,
   expectations.name,
   expectations.failed_records,
@@ -70,8 +72,9 @@ FROM(
   SELECT 
     id,
     timestamp,
-    details:flow_progress.metrics,
+    details:flow_progress.metrics.num_output_rows as output_records,
     details:flow_progress.data_quality.dropped_records,
+    details:flow_progress.status as status_update,
     explode(from_json(details:flow_progress:data_quality:expectations
              , schema_of_json("[{'name':'str', 'dataset':'str', 'passed_records': 42, 'failed_records': 42}]"))) expectations
   FROM loan_pipeline_logs

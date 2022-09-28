@@ -136,13 +136,13 @@ FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutio
 -- COMMAND ----------
 
 -- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 2: reference_loan_stats) + Optimize Data Layout for Performance
+SET pipelines.trigger.interval='1 hour';
 CREATE STREAMING LIVE TABLE reference_loan_stats
 COMMENT "Raw historical transactions"
 TBLPROPERTIES --Can be spark, delta, or DLT confs
 ("quality"="bronze",
 "pipelines.autoOptimize.managed"="true",
-"pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo",
-"pipelines.trigger.interval"="1 hour"
+"pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo"
  )
 AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"));  
 -- TODO: set loanStats to pipeline configuration setting using: /databricks-datasets/lending-club-loan-stats/LoanStats_*
@@ -217,7 +217,7 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 -- DBTITLE 1,Quarantine Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
-  CONSTRAINT `dropped rows` EXPECT ((next_payment_date <= '2020-12-31') OR (balance <= 0 OR arrears_balance <= 0) OR (cost_center_code IS NULL)) ON VIOLATION DROP ROW
+  CONSTRAINT `dropped rows` EXPECT ((next_payment_date <= '2021-12-31') OR (balance <= 0 OR arrears_balance <= 0) OR (cost_center_code IS NULL)) ON VIOLATION DROP ROW
 )
 COMMENT "Livestream of quarantined invalid records"
 TBLPROPERTIES 
@@ -306,7 +306,7 @@ GROUP BY country_code
 -- COMMAND ----------
 
 -- TODO: Create a view of total balance (sum) per each cost_center_code from the cleaned_new_txs table and call it new_loan_balances_by_cost_center --
- <FILL_IN> 
+<FILL_IN> 
 COMMENT "Live view of new loan balances for consumption by different cost centers"
 TBLPROPERTIES (
   "quality" = "gold",
