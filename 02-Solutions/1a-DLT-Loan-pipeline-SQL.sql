@@ -4,7 +4,7 @@
 -- MAGIC 
 -- MAGIC DLT makes Data Engineering accessible for all. Just declare your transformations in SQL or Python, and DLT will handle the Data Engineering complexity for you.
 -- MAGIC 
--- MAGIC <img style="float:right" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022-loanpipeline.png" width="700"/>
+-- MAGIC <img style="float:right" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/end-to-end-DLT-pipeline.png" width="700"/>
 -- MAGIC 
 -- MAGIC **Accelerate ETL development** <br/>
 -- MAGIC Enable analysts and data engineers to innovate rapidly with simple pipeline development and maintenance 
@@ -30,7 +30,7 @@
 -- MAGIC 
 -- MAGIC ## Bronze layer: incrementally ingest data leveraging Databricks Autoloader
 -- MAGIC 
--- MAGIC <img style="float: right; padding-left: 10px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022%20-%20autoloader.png" width="800"/>
+-- MAGIC <img style="float: right; padding-left: 10px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/BronzeLayerDLT.png" width="800"/>
 -- MAGIC 
 -- MAGIC Our raw data is being sent to a cloud storage. 
 -- MAGIC 
@@ -141,7 +141,9 @@ TBLPROPERTIES --Can be spark, delta, or DLT confs
 "pipelines.autoOptimize.managed"="true",
 "pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo"
  )
+--  AS SELECT * , start_time DATE GENERATED ALWAYS AS (CAST(start_date AS STRING))  FROM cloud_files('${loanStats}', 'csv') 
 AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true")) -- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+
 
 -- COMMAND ----------
 
@@ -166,7 +168,7 @@ AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` ;
 -- MAGIC %md
 -- MAGIC 
 -- MAGIC ## Silver layer: joining tables while ensuring data quality
--- MAGIC <img style="float:right"  src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022%20-%20Silver%20Layer.png" width="500"/>
+-- MAGIC <img style="float:right"  src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/SilverLayerDLT.png" width="900"/>
 -- MAGIC 
 -- MAGIC 
 -- MAGIC Once the bronze layer is defined, we'll create the sliver layers by Joining data. Note that bronze tables are referenced using the `LIVE` spacename. 
@@ -221,55 +223,6 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 
 -- COMMAND ----------
 
--- DBTITLE 1,Historical Loan Transactions
-CREATE LIVE TABLE historical_txs
-COMMENT "Historical loan transactions"
-TBLPROPERTIES ("quality" = "silver")
-AS SELECT a.* FROM LIVE.reference_loan_stats a
-INNER JOIN LIVE.ref_accounting_treatment b USING (id);
-
--- COMMAND ----------
-
--- MAGIC %md-sandbox 
--- MAGIC 
--- MAGIC ## Gold layer
--- MAGIC 
--- MAGIC 
--- MAGIC Our last step is to materialize the Gold Layer.
--- MAGIC 
--- MAGIC Because these tables will be requested at scale using a SQL Endpoint, we'll add Zorder at the table level to ensure faster queries using `pipelines.autoOptimize.zOrderCols`
--- MAGIC 
--- MAGIC <img style="float: center; padding-left: 50px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022%20-%20GoldLayer.png" width="800"/>
-
--- COMMAND ----------
-
-CREATE LIVE TABLE total_loan_balances_1
-COMMENT "Combines historical and new loan data for unified rollup of loan balances"
-TBLPROPERTIES (
-  "quality" = "gold",
-  "pipelines.autoOptimize.zOrderCols" = "location_code"
-)
-AS SELECT sum(revol_bal)  AS bal,
-addr_state   AS location_code 
-FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal, 
-country_code AS location_code 
-FROM live.cleaned_new_txs GROUP BY country_code;
-
--- COMMAND ----------
-
-CREATE LIVE TABLE total_loan_balances_2
-COMMENT "Combines historical and new loan data for unified rollup of loan balances"
-TBLPROPERTIES ("quality" = "gold")
-AS SELECT sum(revol_bal)  AS bal,
-addr_state   AS location_code 
-FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal,
-country_code AS location_code 
-FROM live.cleaned_new_txs GROUP BY country_code;
-
--- COMMAND ----------
-
 -- MAGIC %md
 -- MAGIC 
 -- MAGIC ### Live Views
@@ -287,27 +240,43 @@ FROM live.cleaned_new_txs GROUP BY country_code;
 
 -- COMMAND ----------
 
-CREATE LIVE VIEW new_loan_balances_by_cost_center
-COMMENT "Live view of new loan balances for consumption by different cost centers"
-TBLPROPERTIES (
-  "quality" = "gold",
-  "pipelines.autoOptimize.zOrderCols" = "cost_center_code"
-)
-AS SELECT sum(balance), cost_center_code
-FROM live.cleaned_new_txs
-GROUP BY cost_center_code;
+-- DBTITLE 1,Historical Loan Transactions
+CREATE LIVE VIEW historical_txs
+COMMENT "Historical loan transactions view"
+TBLPROPERTIES ("quality" = "silver")
+AS SELECT a.* FROM LIVE.reference_loan_stats a
+INNER JOIN LIVE.ref_accounting_treatment b USING (id);
 
 -- COMMAND ----------
 
-CREATE LIVE VIEW new_loan_balances_by_country     -- TO DO --
-COMMENT "Live view of new loan balances per country"
+-- MAGIC %md-sandbox 
+-- MAGIC 
+-- MAGIC ## Gold layer
+-- MAGIC 
+-- MAGIC 
+-- MAGIC Our last step is to materialize the Gold Layer.
+-- MAGIC 
+-- MAGIC Because these tables will be requested at scale using a SQL Endpoint, we'll add Zorder at the table level to ensure faster queries using `pipelines.autoOptimize.zOrderCols`
+-- MAGIC 
+-- MAGIC <img style="float: center; padding-left: 50px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/GoldLayer.png" width="1100"/>
+
+-- COMMAND ----------
+
+CREATE LIVE TABLE LoanBalance_by_location
+COMMENT "Combines historical and new loan data for unified rollup of loan balances"
+PARTITIONED BY (last_payment_date)
 TBLPROPERTIES (
   "quality" = "gold",
-  "pipelines.autoOptimize.zOrderCols" = "country_code"
+  "pipelines.autoOptimize.zOrderCols" = "location_code"
 )
-AS SELECT sum(count), country_code
-FROM live.cleaned_new_txs
-GROUP BY country_code;
+AS SELECT sum(revol_bal)  AS bal,
+addr_state   AS location_code
+, last_pymnt_d as last_payment_date
+FROM live.historical_txs  GROUP BY addr_state, last_payment_date
+UNION SELECT sum(balance) AS bal, 
+country_code AS location_code
+, last_payment_date
+FROM live.cleaned_new_txs GROUP BY country_code, last_payment_date;
 
 -- COMMAND ----------
 
