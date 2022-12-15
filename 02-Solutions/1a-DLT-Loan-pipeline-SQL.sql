@@ -4,7 +4,7 @@
 -- MAGIC 
 -- MAGIC DLT makes Data Engineering accessible for all. Just declare your transformations in SQL or Python, and DLT will handle the Data Engineering complexity for you.
 -- MAGIC 
--- MAGIC <img style="float:right" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/end-to-end-DLT-pipeline.png" width="700"/>
+-- MAGIC <img style="float:right" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/end-to-end-DLT.png" width="700"/>
 -- MAGIC 
 -- MAGIC **Accelerate ETL development** <br/>
 -- MAGIC Enable analysts and data engineers to innovate rapidly with simple pipeline development and maintenance 
@@ -30,7 +30,7 @@
 -- MAGIC 
 -- MAGIC ## Bronze layer: incrementally ingest data leveraging Databricks Autoloader
 -- MAGIC 
--- MAGIC <img style="float: right; padding-left: 10px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/BronzeLayerDLT.png" width="800"/>
+-- MAGIC <img style="float: right; padding-left: 10px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/BronzeLayerDLT.png" width="800"/>
 -- MAGIC 
 -- MAGIC Our raw data is being sent to a cloud storage. 
 -- MAGIC 
@@ -168,7 +168,7 @@ AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` ;
 -- MAGIC %md
 -- MAGIC 
 -- MAGIC ## Silver layer: joining tables while ensuring data quality
--- MAGIC <img style="float:right"  src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/SilverLayerDLT.png" width="900"/>
+-- MAGIC <img style="float:right"  src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/SilverLayerDLT.png" width="900"/>
 -- MAGIC 
 -- MAGIC 
 -- MAGIC Once the bronze layer is defined, we'll create the sliver layers by Joining data. Note that bronze tables are referenced using the `LIVE` spacename. 
@@ -258,7 +258,7 @@ INNER JOIN LIVE.ref_accounting_treatment b USING (id);
 -- MAGIC 
 -- MAGIC Because these tables will be requested at scale using a SQL Endpoint, we'll add Zorder at the table level to ensure faster queries using `pipelines.autoOptimize.zOrderCols`
 -- MAGIC 
--- MAGIC <img style="float: center; padding-left: 50px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/GoldLayer.png" width="1100"/>
+-- MAGIC <img style="float: center; padding-left: 50px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/GoldLayerDLT.png" width="1100"/>
 
 -- COMMAND ----------
 

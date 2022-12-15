@@ -22,7 +22,9 @@
 CREATE OR REPLACE VIEW loan_pipeline_logs
 AS SELECT * FROM delta.`${storage_location}/system/events`;
 
-SELECT * FROM loan_pipeline_logs
+SELECT * FROM loan_pipeline_logs -- where maturity_level is not null
+WHERE
+      origin.update_id = '${latest_update_id}'
 ORDER BY timestamp;
 
 -- COMMAND ----------
@@ -45,6 +47,13 @@ ORDER BY timestamp;
 
 -- COMMAND ----------
 
+-- DBTITLE 1,Audit Logging
+SELECT timestamp, details:user_action:action, details:user_action:user_name 
+FROM loan_pipeline_logs WHERE event_type = 'user_action'
+
+
+-- COMMAND ----------
+
 -- DBTITLE 1,Lineage Information
 -- MAGIC %sql
 -- MAGIC SELECT
@@ -59,7 +68,34 @@ ORDER BY timestamp;
 
 -- COMMAND ----------
 
--- DBTITLE 1,Data Quality Metrics
+-- DBTITLE 1,Monitor Data Quality
+SELECT
+  row_expectations.dataset as dataset,
+  row_expectations.name as expectation,
+  SUM(row_expectations.passed_records) as passing_records,
+  SUM(row_expectations.failed_records) as failing_records
+FROM
+  (
+    SELECT
+      explode(
+        from_json(
+          details :flow_progress :data_quality :expectations,
+          "array<struct<name: string, dataset: string, passed_records: int, failed_records: int>>"
+        )
+      ) row_expectations
+    FROM
+      loan_pipeline_logs
+    WHERE
+      event_type = 'flow_progress'
+      AND origin.update_id = '${latest_update_id}'
+  )
+GROUP BY
+  row_expectations.dataset,
+  row_expectations.name
+
+-- COMMAND ----------
+
+-- DBTITLE 1,Data Quality Metrics Over All Runs
 SELECT
   id,
   timestamp,
@@ -83,7 +119,21 @@ FROM(
 -- COMMAND ----------
 
 -- DBTITLE 1,Runtime information of the Latest Pipeline Update
-SELECT details:create_update:runtime_version:dbr_version FROM loan_pipeline_logs WHERE event_type = 'create_update' limit 1;
+SELECT details:create_update:runtime_version:dbr_version FROM loan_pipeline_logs 
+WHERE event_type = 'create_update' 
+Order BY dbr_version DESC limit 1 ;
+
+-- COMMAND ----------
+
+-- DBTITLE 1,Backlog Bytes
+SELECT
+  timestamp,
+  Double(details :flow_progress.metrics.backlog_bytes) as backlog
+FROM
+  loan_pipeline_logs
+WHERE
+  event_type ='flow_progress'
+  AND origin.update_id = '${latest_update_id}'
 
 -- COMMAND ----------
 
@@ -104,48 +154,3 @@ FROM
 WHERE
   event_type IN ('cluster_utilization', 'flow_progress')
   AND origin.update_id = '${latest_update_id}'; 
-
--- COMMAND ----------
-
--- DBTITLE 1,DLT Enhanced Autoscaling for Streaming Workloads
-SELECT
-  timestamp,
-  Double(
-    case
-      when details :autoscale.status = 'REQUESTED' then details :autoscale.desired_num_workers
-      else null
-    end
-  ) as requested_workers,
-  Double(
-    case
-      when details :autoscale.status = 'ACCEPTED' then details :autoscale.desired_num_workers
-      else null
-    end
-  ) as accepted_workers,
-  Double(
-    case
-      when details :autoscale.status = 'SUCCEEDED' then details :autoscale.desired_num_workers
-      else null
-    end
-  ) as succeeded_workers,
-  Double(
-    case
-      when details :autoscale.status = 'REJECTED' then details :autoscale.desired_num_workers
-      else null
-    end
-  ) as rejected_workers
-FROM
- loan_pipeline_logs
-WHERE
-  event_type = 'autoscale'
-  AND origin.update_id = '${latest_update_id}';
-
--- COMMAND ----------
-
--- MAGIC %md
--- MAGIC # DLT Logs FAQ
--- MAGIC 
--- MAGIC 1. Besides the quality control metrics, are actual dropped and failed records accessible in logs?
--- MAGIC 2. How to set up alerts based on certain observation in logs?
--- MAGIC 3. Is it possible to send cluster logs of DLT to external storage?
--- MAGIC 4. Can a user use DLT logs to find information about user actions?
