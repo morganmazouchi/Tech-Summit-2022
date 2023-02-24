@@ -4,7 +4,7 @@
 -- MAGIC 
 -- MAGIC DLT makes Data Engineering accessible for all. Just declare your transformations in SQL or Python, and DLT will handle the Data Engineering complexity for you.
 -- MAGIC 
--- MAGIC <img style="float:right" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022-loanpipeline.png" width="700"/>
+-- MAGIC <img style="float:right" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/end-to-end-DLT.png" width="700"/>
 -- MAGIC 
 -- MAGIC **Accelerate ETL development** <br/>
 -- MAGIC Enable analysts and data engineers to innovate rapidly with simple pipeline development and maintenance 
@@ -30,7 +30,7 @@
 -- MAGIC 
 -- MAGIC ## Bronze layer: incrementally ingest data leveraging Databricks Autoloader
 -- MAGIC 
--- MAGIC <img style="float: right; padding-left: 10px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022%20-%20autoloader.png" width="800"/>
+-- MAGIC <img style="float: right; padding-left: 10px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/BronzeLayerDLT.png" width="800"/>
 -- MAGIC 
 -- MAGIC Our raw data is being sent to a cloud storage. 
 -- MAGIC 
@@ -71,25 +71,10 @@
 -- MAGIC     current_user_no_at = current_user
 -- MAGIC   current_user_no_at = re.sub(r'\W+', '_', current_user_no_at)
 -- MAGIC 
--- MAGIC   if dbutils.notebook.entry_point.getDbutils().notebook().getContext().browserHostName().get() == "e2-demo-field-eng.cloud.databricks.com":
--- MAGIC     pool = "0727-104344-hauls13-pool-uftxk0r6"
--- MAGIC   elif dbutils.notebook.entry_point.getDbutils().notebook().getContext().browserHostName().get() == "cse2.cloud.databricks.com":
--- MAGIC     pool = "0831-121407-yeahs13-pool-rym2rkke"
--- MAGIC   else:
--- MAGIC     pool = None
--- MAGIC 
 -- MAGIC   path = dbutils.notebook.entry_point.getDbutils().notebook().getContext().notebookPath().getOrElse(None)
 -- MAGIC   path = path[:path.rfind("/")]
 -- MAGIC 
 -- MAGIC   conf = {
--- MAGIC         "clusters": [
--- MAGIC             {
--- MAGIC                 "label": "default",
--- MAGIC                 "num_workers": 1,
--- MAGIC                 "instance_pool_id": pool,
--- MAGIC                 "driver_instance_pool_id": pool
--- MAGIC             }
--- MAGIC         ],
 -- MAGIC       "development": True,
 -- MAGIC       "continuous": False,
 -- MAGIC       "channel": "PREVIEW",
@@ -124,14 +109,11 @@
 
 -- COMMAND ----------
 
--- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 1: raw_txs) with Parameterization
- -- TODO: Create a streaming table and name it raw_txs  --
-<FILL_IN>  
+-- DBTITLE 1,Read Raw Data in DLT via Autoloader (Table 1: raw_txs) with Parametrization
+CREATE STREAMING LIVE TABLE raw_txs    
 COMMENT "New raw loan data incrementally ingested from cloud object storage landing zone"
 TBLPROPERTIES ("quality" = "bronze")
-AS SELECT * 
-FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue")); 
--- TODO: add input_data to pipeline configuration setting using /home/techsummit/dlt
+AS SELECT * FROM cloud_files('${input_data}/landing', 'json', map("cloudFiles.schemaEvolutionMode", "rescue"));
 
 -- COMMAND ----------
 
@@ -144,8 +126,9 @@ TBLPROPERTIES --Can be spark, delta, or DLT confs
 "pipelines.autoOptimize.managed"="true",
 "pipelines.autoOptimize.zOrderCols"="CustomerID, InvoiceNo"
  )
-AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true"));  
--- TODO: set loanStats to pipeline configuration setting using: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+--  AS SELECT * , start_time DATE GENERATED ALWAYS AS (CAST(start_date AS STRING))  FROM cloud_files('${loanStats}', 'csv') 
+AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnTypes", "true")) -- loanStats: /databricks-datasets/lending-club-loan-stats/LoanStats_*
+
 
 -- COMMAND ----------
 
@@ -161,24 +144,24 @@ AS SELECT * FROM cloud_files('${loanStats}', 'csv', map("cloudFiles.inferColumnT
 -- COMMAND ----------
 
 -- DBTITLE 1,Read Raw Data Stored in Delta Tables in DLT (Table 3: ref_accounting_treatment) with Parametrization
--- TODO: Create a table called ref_accounting_treatment that will be a batch load of the delta table located at "${input_data}/ref_accounting_treatment/", and name it ref_accounting_treatment
-<FILL_IN> 
+CREATE LIVE TABLE ref_accounting_treatment    
 COMMENT "Lookup mapping for accounting codes"
-<FILL_IN> 
+AS SELECT * FROM delta.`${input_data}/ref_accounting_treatment/` ;
 
 -- COMMAND ----------
 
 -- MAGIC %md
 -- MAGIC 
 -- MAGIC ## Silver layer: joining tables while ensuring data quality
+-- MAGIC <img style="float:right"  src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/SilverLayerDLT.png" width="900"/>
 -- MAGIC 
--- MAGIC <img style="float:right"  src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022%20-%20Silver%20Layer.png" width="500"/>
 -- MAGIC 
--- MAGIC Once the bronze layer is defined, we'll create the sliver layers by Joining data. Note that bronze tables are referenced using the `LIVE` namespace. 
+-- MAGIC Once the bronze layer is defined, we'll create the sliver layers by Joining data. Note that bronze tables are referenced using the `LIVE` spacename. 
 -- MAGIC 
--- MAGIC To consume only increment from the Bronze layer like `raw_txs`, we'll be using the `stream` keyword: `stream(LIVE.raw_txs)`
+-- MAGIC To consume only increment from the Bronze layer like `raw_txs`, we'll be using the `stream` keyworkd: `stream(LIVE.raw_txs)`
 -- MAGIC 
 -- MAGIC Note that we don't have to worry about compactions, DLT handles that for us.
+-- MAGIC 
 -- MAGIC 
 -- MAGIC #### Expectations
 -- MAGIC 
@@ -196,11 +179,9 @@ COMMENT "Lookup mapping for accounting codes"
 
 -- DBTITLE 1,Perform ETL & Enforce Quality Expectations
 CREATE STREAMING LIVE TABLE cleaned_new_txs (
-  -- TODO: Add constraint to remove any records that next_payment_date is less or equal to date('2021-12-31') --
-  <FILL_IN>
-  CONSTRAINT `Balance should be positive` EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
-  -- TODO: Add constraint that fails the entire update upon observing a null value in cost_center_code field --
-  <FILL_IN>
+  CONSTRAINT `Payments should be this year`  EXPECT (next_payment_date > date('2021-12-31')) ON VIOLATION DROP ROW, 
+  CONSTRAINT `Balance should be positive`    EXPECT (balance > 0 AND arrears_balance > 0) ON VIOLATION DROP ROW,    
+  CONSTRAINT `Cost center must be specified` EXPECT (cost_center_code IS NOT NULL) ON VIOLATION FAIL UPDATE         
 )
 COMMENT "Livestream of new transactions, cleaned and compliant"
 TBLPROPERTIES ("quality" = "silver")
@@ -214,7 +195,7 @@ INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = ra
 
 -- COMMAND ----------
 
--- DBTITLE 1,Quarantine Data with Expectations
+-- DBTITLE 1,Quarantine Invalid Data with Expectations
 CREATE STREAMING LIVE TABLE quarantined_cleaned_new_txs
 (
   CONSTRAINT `dropped rows` EXPECT ((next_payment_date <= '2021-12-31') OR (balance <= 0 OR arrears_balance <= 0) OR (cost_center_code IS NULL)) ON VIOLATION DROP ROW
@@ -224,55 +205,6 @@ TBLPROPERTIES
 ("quality"="silver")
 AS SELECT txs.*, rat.id as accounting_treatment FROM stream(LIVE.raw_txs) txs
 INNER JOIN live.ref_accounting_treatment rat ON txs.accounting_treatment_id = rat.id;
-
--- COMMAND ----------
-
--- DBTITLE 1,Historical Loan Transactions
-CREATE LIVE TABLE historical_txs
-COMMENT "Historical loan transactions"
-TBLPROPERTIES ("quality" = "silver")
-AS SELECT a.* FROM LIVE.reference_loan_stats a
-INNER JOIN LIVE.ref_accounting_treatment b USING (id);
-
--- COMMAND ----------
-
--- MAGIC %md-sandbox 
--- MAGIC 
--- MAGIC ## Gold layer
--- MAGIC 
--- MAGIC 
--- MAGIC Our last step is to materialize the Gold Layer.
--- MAGIC 
--- MAGIC Because these tables will be requested at scale using a SQL Endpoint, we'll add Zorder at the table level to ensure faster queries using `pipelines.autoOptimize.zOrderCols`
--- MAGIC 
--- MAGIC <img style="float: center; padding-left: 50px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/InputData%20%26%20ML%20model/Techsummit%20DLT%202022%20-%20GoldLayer.png" width="800"/>
-
--- COMMAND ----------
-
-CREATE LIVE TABLE total_loan_balances_1
-COMMENT "Combines historical and new loan data for unified rollup of loan balances"
-TBLPROPERTIES (
-  "quality" = "gold",
-  "pipelines.autoOptimize.zOrderCols" = "location_code"
-)
-AS SELECT sum(revol_bal)  AS bal,
-addr_state   AS location_code 
-FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal, 
-country_code AS location_code
-FROM live.cleaned_new_txs GROUP BY country_code;
-
--- COMMAND ----------
-
-CREATE LIVE TABLE total_loan_balances_2
-COMMENT "Combines historical and new loan data for unified rollup of loan balances"
-TBLPROPERTIES ("quality" = "gold")
-AS SELECT sum(revol_bal)  AS bal,
-addr_state   AS location_code 
-FROM live.historical_txs  GROUP BY addr_state
-UNION SELECT sum(balance) AS bal,
-country_code AS location_code 
-FROM live.cleaned_new_txs GROUP BY country_code;
 
 -- COMMAND ----------
 
@@ -289,32 +221,47 @@ FROM live.cleaned_new_txs GROUP BY country_code;
 -- MAGIC 
 -- MAGIC - Expectations on views validate correctness of intermediate results (data quality metrics for views are not designed to be observable in UI)
 -- MAGIC 
--- MAGIC - Views are not persisted, and fully recomputed when invoked
+-- MAGIC - Views are recomputed every time they are required
 
 -- COMMAND ----------
 
-CREATE LIVE VIEW new_loan_balances_by_country     
-COMMENT "Live view of new loan balances per country"
-TBLPROPERTIES (
-  "quality" = "gold",
-  "pipelines.autoOptimize.zOrderCols" = "country_code"
-)
-AS SELECT sum(count), country_code
-FROM live.cleaned_new_txs
-GROUP BY country_code
+-- DBTITLE 1,Historical Loan Transactions
+CREATE LIVE VIEW historical_txs
+COMMENT "Historical loan transactions view"
+TBLPROPERTIES ("quality" = "silver")
+AS SELECT a.* FROM LIVE.reference_loan_stats a
+INNER JOIN LIVE.ref_accounting_treatment b USING (id);
 
 -- COMMAND ----------
 
--- TODO: Create a view of total balance (sum) per each cost_center_code from the cleaned_new_txs table and call it new_loan_balances_by_cost_center --
-<FILL_IN> 
-COMMENT "Live view of new loan balances for consumption by different cost centers"
+-- MAGIC %md-sandbox 
+-- MAGIC 
+-- MAGIC ## Gold layer
+-- MAGIC 
+-- MAGIC 
+-- MAGIC Our last step is to materialize the Gold Layer.
+-- MAGIC 
+-- MAGIC Because these tables will be requested at scale using a SQL Endpoint, we'll add Zorder at the table level to ensure faster queries using `pipelines.autoOptimize.zOrderCols`
+-- MAGIC 
+-- MAGIC <img style="float: center; padding-left: 50px" src="https://raw.githubusercontent.com/morganmazouchi/Tech-Summit-2022/main/Images/GoldLayerDLT.png" width="1100"/>
+
+-- COMMAND ----------
+
+CREATE LIVE TABLE LoanBalance_by_location
+COMMENT "Combines historical and new loan data for unified rollup of loan balances"
+PARTITIONED BY (last_payment_date)
 TBLPROPERTIES (
   "quality" = "gold",
-  "pipelines.autoOptimize.zOrderCols" = "cost_center_code"
+  "pipelines.autoOptimize.zOrderCols" = "location_code"
 )
-AS SELECT sum(balance), cost_center_code
-FROM <FILL_IN> 
-GROUP BY cost_center_code
+AS SELECT sum(revol_bal)  AS bal,
+addr_state   AS location_code
+, last_pymnt_d as last_payment_date
+FROM live.historical_txs  GROUP BY addr_state, last_payment_date
+UNION SELECT sum(balance) AS bal, 
+country_code AS location_code
+, last_payment_date
+FROM live.cleaned_new_txs GROUP BY country_code, last_payment_date;
 
 -- COMMAND ----------
 
@@ -329,6 +276,7 @@ GROUP BY cost_center_code
 
 -- DBTITLE 1,Load the Model as SQL Function in a Separate Notebook!
 -- MAGIC %python
+-- MAGIC 
 -- MAGIC import mlflow
 -- MAGIC #                                                                                           output
 -- MAGIC #                                                                 Model name    stage          |
@@ -342,7 +290,7 @@ GROUP BY cost_center_code
 CREATE STREAMING LIVE TABLE risk_prediction_dlt
 COMMENT "Risk prediction generated with our model from MLFlow registry"
 AS SELECT *, 
-loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred 
+loan_risk_prediction(struct(term, home_ownership, purpose, addr_state, verification_status, application_type, loan_amnt, annual_inc, delinq_2yrs, total_acc)) as pred  
 FROM STREAM(live.reference_loan_stats)
 
 -- COMMAND ----------
@@ -353,13 +301,12 @@ FROM STREAM(live.reference_loan_stats)
 -- MAGIC 
 -- MAGIC ##### Note: You need to include the second python notebook in addition to this notebook in your pipeline!
 -- MAGIC 
--- MAGIC Navigate to the workflows in the menu, switch to delta live tables and click on create a pipeline! 
+-- MAGIC Navigate to the workflows in the menue, switch to delta live tables and click on create a pipeline! 
+-- MAGIC 
 -- MAGIC * Note you need to add data location paths as two parameters in your pipeline configuration:
 -- MAGIC 
 -- MAGIC       - key: loanStats , value: /databricks-datasets/lending-club-loan-stats/LoanStats_*
 -- MAGIC       - key: input_data, value: /home/techsummit/dlt
--- MAGIC     
--- MAGIC * For this hands on session, please disable autoscale and only use 1 worker.
 
 -- COMMAND ----------
 
